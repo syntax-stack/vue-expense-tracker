@@ -1,18 +1,32 @@
 <script setup lang="ts">
-import type { Transaction } from '@/App.vue';
+import type { Transaction } from '@/types';
 
 const props = defineProps<{
-    currency: string,
-    transactions: Transaction[]
+    currency: string;
+    transactions: Transaction[];
 }>();
 
-const formatAmount = (transaction: Transaction) => {
-    const sign = transaction.type === 'income' ? '+' : '-';
-    const value = (transaction.amount / 100).toFixed(2);
-    return `${sign}${value}`;
+const emit = defineEmits<{
+    (e: 'transactionDeleted', id: number): void
+}>();
+
+const formatDisplay = (transaction: Transaction) => {
+    const amount = transaction.amount / 100;
+
+    const formatted = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: props.currency,
+    }).format(amount);
+
+    return transaction.type === 'income' ? `+${formatted}` : `-${formatted}`;
+};
+
+const deleteTransaction = (id: number) => {
+    emit('transactionDeleted', id);
 };
 
 </script>
+
 <template>
     <h4>History</h4>
     <ul id="list" class="list">
@@ -21,8 +35,8 @@ const formatAmount = (transaction: Transaction) => {
             :key="transaction.id"
             :class="transaction.type === 'income' ? 'plus' : 'minus'"
         >
-            {{ transaction.text }} <span>{{ currency }} {{ formatAmount(transaction) }}</span
-            ><button class="delete-btn">X</button>
+            {{ transaction.text }} <span>{{ formatDisplay(transaction) }}</span
+            ><button class="delete-btn" @click="deleteTransaction(transaction.id)">X</button>
         </li>
     </ul>
 </template>

@@ -4,46 +4,92 @@ import Balance from '@/components/Balance.vue';
 import IncomeExpenses from '@/components/IncomeExpenses.vue';
 import TransactionList from '@/components/TransactionList.vue';
 import AddTransaction from '@/components/AddTransaction.vue';
-import { ref, type Ref } from 'vue';
+import { ref, computed, onMounted, type Ref } from 'vue';
+import type { NewTransactionData, Transaction } from './types';
 
-const currency: Ref<string> = ref('USD');
-
-export type Transaction = {
-    id: number;
-    text: string;
-    amount: number; // Stored in cents (e.g., 100 = $1.00)
-    type: 'income' | 'expense';
-};
+import { useToast } from 'vue-toastification';
+const toast = useToast();
+const currency: Ref<string> = ref(localStorage.getItem('currency') || 'USD');
 
 const transactions: Ref<Transaction[]> = ref([
     {
         id: 1,
-        text: 'Flower',
-        amount: 1999,
-        type: 'expense',
-    },
-    {
-        id: 2,
-        text: 'Chocolate',
-        amount: 1999,
-        type: 'expense',
-    },
-    {
-        id: 3,
-        text: 'Salary',
-        amount: 300000,
+        text: 'Example Invoice',
+        amount: 30000,
         type: 'income',
     },
 ]);
+
+onMounted(() => {
+    const savedTransactions = localStorage.getItem('transactions');
+
+    if (savedTransactions) {
+        transactions.value = JSON.parse(savedTransactions);
+    }
+});
+
+// Get total
+const total = computed(() => {
+    return transactions.value.reduce((accumulator, transaction) => {
+        return transaction.type === 'expense'
+            ? accumulator - transaction.amount
+            : accumulator + transaction.amount;
+    }, 0);
+});
+
+// Get income
+const income = computed(() => {
+    return transactions.value
+        .filter((t) => t.type === 'income')
+        .reduce((acc, t) => acc + t.amount, 0);
+});
+
+// Get expenses
+const expenses = computed(() => {
+    return transactions.value
+        .filter((t) => t.type === 'expense')
+        .reduce((acc, t) => acc + t.amount, 0);
+});
+
+// Add transaction to transactions
+const handleTransactionSubmitted = (data: NewTransactionData) => {
+    const newTransaction: Transaction = {
+        id: Math.floor(Math.random() * 1000000),
+        text: data.text,
+        amount: data.amount,
+        type: data.type,
+    };
+    transactions.value.push(newTransaction);
+    saveTransactionsToLocalStorage();
+    toast.success('Transaction added');
+};
+
+const handleTransactionDeleted = (id: number) => {
+    transactions.value = transactions.value.filter((transaction) => transaction.id !== id);
+    saveTransactionsToLocalStorage();
+    toast.success('Transaction deleted');
+};
+
+const saveTransactionsToLocalStorage = () => {
+    localStorage.setItem('transactions', JSON.stringify(transactions.value));
+};
+
+const saveCurrencyToLocalStorage = () => {
+    localStorage.setItem('currency', currency.value);
+};
 </script>
 
 <template>
     <Header />
 
     <div class="container">
-        <Balance />
-        <IncomeExpenses />
-        <TransactionList :transactions="transactions" :currency="currency" />
-        <AddTransaction />
+        <Balance :total="total" :currency="currency" />
+        <IncomeExpenses :income="income" :expenses="expenses" :currency="currency" />
+        <TransactionList
+            :transactions="transactions"
+            :currency="currency"
+            @transaction-deleted="handleTransactionDeleted"
+        />
+        <AddTransaction @transaction-submitted="handleTransactionSubmitted" />
     </div>
 </template>
