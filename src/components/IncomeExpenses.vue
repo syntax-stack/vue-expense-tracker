@@ -8,7 +8,7 @@ const props = defineProps<{
 }>();
 
 const format = (value: number) => {
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: props.currency,
     }).format(value / 100);
